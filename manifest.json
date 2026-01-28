@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "MP3 Finder",
+  "description": "Find and download MP3 files from the current page.",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting", "downloads"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "MP3 Finder"
+  }
+}
