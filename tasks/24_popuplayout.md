@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | D |
-| 依存タスク | 16-23 |
-| 推定時間 | 30min |
-| 担当subagent | frontend-page |
+| 項目         | 値                         |
+| ------------ | -------------------------- |
+| 並列グループ | D                          |
+| 依存タスク   | 16-23                      |
+| 推定時間     | 30min                      |
+| 担当subagent | frontend-page              |
 | テンプレート | templates_task_template.md |
-| レビュー | design-reviewer |
+| レビュー     | design-reviewer            |
 
 ## 概要
 

@@ -76,11 +76,11 @@ erDiagram
 
 ```typescript
 type ConversionJobStatus =
-  | 'pending'      // 待機中（キューに追加済み）
-  | 'downloading'  // 動画ダウンロード中
-  | 'converting'   // ffmpeg変換中
-  | 'finalizing'   // ファイル生成中
-  | 'error';       // エラー発生
+  | 'pending' // 待機中（キューに追加済み）
+  | 'downloading' // 動画ダウンロード中
+  | 'converting' // ffmpeg変換中
+  | 'finalizing' // ファイル生成中
+  | 'error'; // エラー発生
 
 interface ConversionJob {
   /** ジョブID（ULID形式） */
@@ -116,6 +116,7 @@ interface ConversionJob {
 ```
 
 **例**:
+
 ```json
 {
   "conversionJobs": [
@@ -178,6 +179,7 @@ interface CompletedJob {
 ```
 
 **例**:
+
 ```json
 {
   "completedJobs": [
@@ -229,6 +231,7 @@ interface Metadata {
 ```
 
 **デフォルト値**:
+
 ```json
 {
   "title": "ファイル名から自動取得",
@@ -265,6 +268,7 @@ interface Settings {
 ```
 
 **デフォルト値**:
+
 ```json
 {
   "maxConcurrentJobs": 3,
@@ -286,19 +290,22 @@ Service Workerは以下の情報をメモリ上で管理します（永続化不
 /**
  * 実行中のffmpegプロセスを管理
  */
-type ActiveJobs = Map<string, {
-  /** ジョブID */
-  jobId: string;
+type ActiveJobs = Map<
+  string,
+  {
+    /** ジョブID */
+    jobId: string;
 
-  /** ffmpegワーカー */
-  worker: Worker;
+    /** ffmpegワーカー */
+    worker: Worker;
 
-  /** キャンセル用のAbortController */
-  abortController: AbortController;
+    /** キャンセル用のAbortController */
+    abortController: AbortController;
 
-  /** 進捗更新用のコールバック */
-  onProgress: (progress: number) => void;
-}>;
+    /** 進捗更新用のコールバック */
+    onProgress: (progress: number) => void;
+  }
+>;
 ```
 
 ---
@@ -397,20 +404,21 @@ sequenceDiagram
 
 ### 5.1 conversionJobs（変換中ジョブ）
 
-| 状態 | タイミング | 保持期間 |
-|------|----------|---------|
-| 追加 | ユーザーが「音声抽出」クリック | - |
-| 更新 | 処理中（進捗・ステータス変更時） | - |
-| 削除 | 変換完了 or エラー発生 | 完了後即削除 |
+| 状態 | タイミング                       | 保持期間     |
+| ---- | -------------------------------- | ------------ |
+| 追加 | ユーザーが「音声抽出」クリック   | -            |
+| 更新 | 処理中（進捗・ステータス変更時） | -            |
+| 削除 | 変換完了 or エラー発生           | 完了後即削除 |
 
 ### 5.2 completedJobs（完了ジョブ）
 
-| 状態 | タイミング | 保持期間 |
-|------|----------|---------|
-| 追加 | 変換完了時 | - |
-| 削除 | ユーザーが「削除」クリック or 7日経過 | 最大7日 |
+| 状態 | タイミング                            | 保持期間 |
+| ---- | ------------------------------------- | -------- |
+| 追加 | 変換完了時                            | -        |
+| 削除 | ユーザーが「削除」クリック or 7日経過 | 最大7日  |
 
 **自動削除ロジック**:
+
 - Service Worker起動時に `completedTime` を確認
 - 7日（604800000ミリ秒）以上経過したジョブを削除
 
@@ -420,10 +428,10 @@ sequenceDiagram
 
 ### 6.1 容量制限
 
-| ストレージ | 上限 | 対策 |
-|-----------|------|------|
-| Chrome Storage (local) | 無制限 | 古いcompletedJobsを自動削除 |
-| Blob URL | ブラウザのメモリに依存 | ダウンロード後にrevokeする |
+| ストレージ             | 上限                   | 対策                        |
+| ---------------------- | ---------------------- | --------------------------- |
+| Chrome Storage (local) | 無制限                 | 古いcompletedJobsを自動削除 |
+| Blob URL               | ブラウザのメモリに依存 | ダウンロード後にrevokeする  |
 
 ### 6.2 最適化
 
@@ -452,12 +460,12 @@ sequenceDiagram
 
 ### 8.1 データの保存場所
 
-| データ | 保存場所 | 外部送信 |
-|--------|---------|---------|
-| 動画URL | Chrome Storage（ローカル） | なし |
-| 動画ファイル | メモリ（一時的） | なし |
-| 変換後MP3 | Blob（メモリ） | なし |
-| メタデータ | Chrome Storage（ローカル） | なし |
+| データ       | 保存場所                   | 外部送信 |
+| ------------ | -------------------------- | -------- |
+| 動画URL      | Chrome Storage（ローカル） | なし     |
+| 動画ファイル | メモリ（一時的）           | なし     |
+| 変換後MP3    | Blob（メモリ）             | なし     |
+| メタデータ   | Chrome Storage（ローカル） | なし     |
 
 ### 8.2 プライバシー
 
@@ -480,8 +488,8 @@ chrome.runtime.onInstalled.addListener(() => {
       maxConcurrentJobs: 3,
       mp3Bitrate: 128,
       autoDownload: true,
-      showNotifications: true,
-    },
+      showNotifications: true
+    }
   });
 });
 ```

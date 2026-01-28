@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | - (順次実行) |
-| 依存タスク | 01 |
-| 推定時間 | 30min |
-| 担当subagent | cicd-engineer |
+| 項目         | 値                     |
+| ------------ | ---------------------- |
+| 並列グループ | - (順次実行)           |
+| 依存タスク   | 01                     |
+| 推定時間     | 30min                  |
+| 担当subagent | cicd-engineer          |
 | テンプレート | setup_task_template.md |
-| レビュー | - |
+| レビュー     | -                      |
 
 ## 概要
 
@@ -97,14 +97,7 @@ coverage/
     "eslint": "^9.0.0",
     "prettier": "^3.2.0"
   },
-  "keywords": [
-    "chrome-extension",
-    "media",
-    "video",
-    "audio",
-    "mp3",
-    "ffmpeg"
-  ],
+  "keywords": ["chrome-extension", "media", "video", "audio", "mp3", "ffmpeg"],
   "author": "",
   "license": "MIT"
 }
@@ -144,13 +137,13 @@ export default [
       'no-console': 'off', // Chrome拡張では許可
       'prefer-const': 'error',
       'no-var': 'error',
-      'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
+      eqeqeq: ['error', 'always'],
+      curly: ['error', 'all'],
       'brace-style': ['error', '1tbs'],
       'comma-dangle': ['error', 'never'],
-      'semi': ['error', 'always'],
-      'quotes': ['error', 'single', { avoidEscape: true }],
-      'indent': ['error', 2, { SwitchCase: 1 }],
+      semi: ['error', 'always'],
+      quotes: ['error', 'single', { avoidEscape: true }],
+      indent: ['error', 2, { SwitchCase: 1 }],
       'no-trailing-spaces': 'error',
       'eol-last': ['error', 'always']
     }

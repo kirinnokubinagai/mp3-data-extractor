@@ -26,7 +26,7 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // メッセージ受信
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
   console.log('[Service Worker] メッセージ受信:', message);
 
   switch (message.type) {
@@ -60,33 +60,36 @@ function handleScanMedia(tabId) {
 function handleDownloadVideo(payload) {
   const { url, filename } = payload;
 
-  chrome.downloads.download({
-    url: url,
-    filename: filename || 'video.mp4',
-    saveAs: true
-  }, (downloadId) => {
-    if (chrome.runtime.lastError) {
-      console.error('[Service Worker] ダウンロードエラー:', chrome.runtime.lastError);
-      return;
+  chrome.downloads.download(
+    {
+      url: url,
+      filename: filename || 'video.mp4',
+      saveAs: true
+    },
+    (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Service Worker] ダウンロードエラー:', chrome.runtime.lastError);
+        return;
+      }
+
+      console.log('[Service Worker] ダウンロード開始:', downloadId);
+
+      // 通知
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon-48.png',
+        title: 'ダウンロード開始',
+        message: `${filename} のダウンロードを開始しました`
+      });
     }
-
-    console.log('[Service Worker] ダウンロード開始:', downloadId);
-
-    // 通知
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icons/icon-48.png',
-      title: 'ダウンロード開始',
-      message: `${filename} のダウンロードを開始しました`
-    });
-  });
+  );
 }
 
 /**
  * 音声抽出処理（仮実装）
  */
 async function handleExtractAudio(payload) {
-  const { url, filename, metadata } = payload;
+  const { filename } = payload;
 
   console.log('[Service Worker] 音声抽出開始:', filename);
 

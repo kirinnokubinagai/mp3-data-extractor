@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | B |
-| 依存タスク | 09 |
-| 推定時間 | 30min |
-| 担当subagent | frontend-component |
+| 項目         | 値                         |
+| ------------ | -------------------------- |
+| 並列グループ | B                          |
+| 依存タスク   | 09                         |
+| 推定時間     | 30min                      |
+| 担当subagent | frontend-component         |
 | テンプレート | molecules_task_template.md |
-| レビュー | design-reviewer |
+| レビュー     | design-reviewer            |
 
 ## 概要
 

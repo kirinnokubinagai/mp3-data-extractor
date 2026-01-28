@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | J |
-| 依存タスク | 44 |
-| 推定時間 | 30min |
-| 担当subagent | frontend-component |
+| 項目         | 値                      |
+| ------------ | ----------------------- |
+| 並列グループ | J                       |
+| 依存タスク   | 44                      |
+| 推定時間     | 30min                   |
+| 担当subagent | frontend-component      |
 | テンプレート | polish_task_template.md |
-| レビュー | performance-reviewer |
+| レビュー     | performance-reviewer    |
 
 ## 概要
 

@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | - (順次実行) |
-| 依存タスク | 01 |
-| 推定時間 | 30min |
-| 担当subagent | frontend-style |
+| 項目         | 値                     |
+| ------------ | ---------------------- |
+| 並列グループ | - (順次実行)           |
+| 依存タスク   | 01                     |
+| 推定時間     | 30min                  |
+| 担当subagent | frontend-style         |
 | テンプレート | setup_task_template.md |
-| レビュー | - |
+| レビュー     | -                      |
 
 ## 概要
 
@@ -42,72 +42,80 @@ Tailwind CSS CDNを導入し、デザイントークン（カラー、スペー�
 ```html
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Media Extractor</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Media Extractor</title>
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Tailwind Config -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: {
-              50: '#f0fdfa',
-              100: '#ccfbf1',
-              200: '#99f6e4',
-              300: '#5eead4',
-              400: '#2dd4bf',
-              500: '#14b8a6',
-              600: '#0d9488',
-              700: '#0f766e',
-              800: '#115e59',
-              900: '#134e4a',
-              950: '#042f2e'
+    <!-- Tailwind Config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                50: '#f0fdfa',
+                100: '#ccfbf1',
+                200: '#99f6e4',
+                300: '#5eead4',
+                400: '#2dd4bf',
+                500: '#14b8a6',
+                600: '#0d9488',
+                700: '#0f766e',
+                800: '#115e59',
+                900: '#134e4a',
+                950: '#042f2e'
+              },
+              secondary: {
+                50: '#fff7ed',
+                100: '#ffedd5',
+                200: '#fed7aa',
+                300: '#fdba74',
+                400: '#fb923c',
+                500: '#f97316',
+                600: '#ea580c',
+                700: '#c2410c',
+                800: '#9a3412',
+                900: '#7c2d12',
+                950: '#431407'
+              }
             },
-            secondary: {
-              50: '#fff7ed',
-              100: '#ffedd5',
-              200: '#fed7aa',
-              300: '#fdba74',
-              400: '#fb923c',
-              500: '#f97316',
-              600: '#ea580c',
-              700: '#c2410c',
-              800: '#9a3412',
-              900: '#7c2d12',
-              950: '#431407'
+            fontFamily: {
+              sans: [
+                '-apple-system',
+                'BlinkMacSystemFont',
+                'Segoe UI',
+                'Roboto',
+                'Helvetica Neue',
+                'Arial',
+                'sans-serif'
+              ],
+              mono: ['SF Mono', 'Monaco', 'Cascadia Code', 'Courier New', 'monospace']
             }
-          },
-          fontFamily: {
-            sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
-            mono: ['SF Mono', 'Monaco', 'Cascadia Code', 'Courier New', 'monospace']
           }
         }
-      }
-    }
-  </script>
+      };
+    </script>
 
-  <!-- Lucide Icons CDN -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Custom Styles -->
-  <link rel="stylesheet" href="popup.css">
-</head>
-<body class="w-[400px] min-h-[400px] max-h-[600px] overflow-y-auto bg-neutral-50">
-  <!-- Popup Content -->
-  <div id="app"></div>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body class="w-[400px] min-h-[400px] max-h-[600px] overflow-y-auto bg-neutral-50">
+    <!-- Popup Content -->
+    <div id="app"></div>
 
-  <script type="module" src="popup.js"></script>
-  <script>
-    // Lucide Icons初期化
-    lucide.createIcons();
-  </script>
-</body>
+    <script type="module" src="popup.js"></script>
+    <script>
+      // Lucide Icons初期化
+      lucide.createIcons();
+    </script>
+  </body>
 </html>
 ```
 
@@ -171,18 +179,18 @@ Tailwind CSS CDNを導入し、デザイントークン（カラー、スペー�
   /* Spacing (4px base) */
   --space-0: 0;
   --space-1: 0.25rem; /* 4px */
-  --space-2: 0.5rem;  /* 8px */
+  --space-2: 0.5rem; /* 8px */
   --space-3: 0.75rem; /* 12px */
-  --space-4: 1rem;    /* 16px */
+  --space-4: 1rem; /* 16px */
   --space-5: 1.25rem; /* 20px */
-  --space-6: 1.5rem;  /* 24px */
-  --space-8: 2rem;    /* 32px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
   --space-10: 2.5rem; /* 40px */
-  --space-12: 3rem;   /* 48px */
+  --space-12: 3rem; /* 48px */
 
   /* Border Radius */
   --radius-sm: 0.25rem; /* 4px */
-  --radius-md: 0.5rem;  /* 8px */
+  --radius-md: 0.5rem; /* 8px */
   --radius-lg: 0.75rem; /* 12px */
   --radius-full: 9999px;
 
@@ -212,7 +220,8 @@ Tailwind CSS CDNを導入し、デザイントークン（カラー、スペー�
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: #292524; /* neutral-800 */

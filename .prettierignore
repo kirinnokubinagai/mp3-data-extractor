@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+
+# Icons
+icons/
+
+# Logs
+*.log

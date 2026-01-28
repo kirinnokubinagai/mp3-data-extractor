@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | F |
-| 依存タスク | 28 |
-| 推定時間 | 30min |
-| 担当subagent | backend-repository |
+| 項目         | 値                    |
+| ------------ | --------------------- |
+| 並列グループ | F                     |
+| 依存タスク   | 28                    |
+| 推定時間     | 30min                 |
+| 担当subagent | backend-repository    |
 | テンプレート | data_task_template.md |
-| レビュー | backend-reviewer |
+| レビュー     | backend-reviewer      |
 
 ## 概要
 

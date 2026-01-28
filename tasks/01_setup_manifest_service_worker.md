@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | - (順次実行) |
-| 依存タスク | なし |
-| 推定時間 | 1h |
-| 担当subagent | cicd-engineer |
+| 項目         | 値                     |
+| ------------ | ---------------------- |
+| 並列グループ | - (順次実行)           |
+| 依存タスク   | なし                   |
+| 推定時間     | 1h                     |
+| 担当subagent | cicd-engineer          |
 | テンプレート | setup_task_template.md |
-| レビュー | - |
+| レビュー     | -                      |
 
 ## 概要
 
@@ -48,16 +48,9 @@
   "version": "2.0.0",
   "description": "動画・音声ファイルを検出してダウンロード、音声抽出が可能なChrome拡張機能",
 
-  "permissions": [
-    "activeTab",
-    "storage",
-    "notifications",
-    "downloads"
-  ],
+  "permissions": ["activeTab", "storage", "notifications", "downloads"],
 
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": ["<all_urls>"],
 
   "action": {
     "default_popup": "popup.html",
@@ -99,6 +92,7 @@
 ```
 
 **権限の説明:**
+
 - `activeTab`: 現在のタブのURLとコンテンツアクセス
 - `storage`: Chrome Storageでジョブ情報を永続化
 - `notifications`: 変換完了通知
@@ -199,26 +193,29 @@ function handleScanMedia(tabId) {
 function handleDownloadVideo(payload) {
   const { url, filename } = payload;
 
-  chrome.downloads.download({
-    url: url,
-    filename: filename || 'video.mp4',
-    saveAs: true
-  }, (downloadId) => {
-    if (chrome.runtime.lastError) {
-      console.error('[Service Worker] ダウンロードエラー:', chrome.runtime.lastError);
-      return;
+  chrome.downloads.download(
+    {
+      url: url,
+      filename: filename || 'video.mp4',
+      saveAs: true
+    },
+    (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Service Worker] ダウンロードエラー:', chrome.runtime.lastError);
+        return;
+      }
+
+      console.log('[Service Worker] ダウンロード開始:', downloadId);
+
+      // 通知
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon-48.png',
+        title: 'ダウンロード開始',
+        message: `${filename} のダウンロードを開始しました`
+      });
     }
-
-    console.log('[Service Worker] ダウンロード開始:', downloadId);
-
-    // 通知
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icons/icon-48.png',
-      title: 'ダウンロード開始',
-      message: `${filename} のダウンロードを開始しました`
-    });
-  });
+  );
 }
 
 /**
@@ -411,7 +408,7 @@ export async function saveJob(job) {
  */
 export async function updateJob(jobId, updates) {
   const jobs = await getAllJobs();
-  const index = jobs.findIndex(j => j.id === jobId);
+  const index = jobs.findIndex((j) => j.id === jobId);
 
   if (index !== -1) {
     jobs[index] = { ...jobs[index], ...updates };

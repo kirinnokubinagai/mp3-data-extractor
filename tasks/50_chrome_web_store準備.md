@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | - |
-| 依存タスク | 49 |
-| 推定時間 | 30min |
-| 担当subagent | deployer |
+| 項目         | 値                      |
+| ------------ | ----------------------- |
+| 並列グループ | -                       |
+| 依存タスク   | 49                      |
+| 推定時間     | 30min                   |
+| 担当subagent | deployer                |
 | テンプレート | deploy_task_template.md |
-| レビュー | security-auditor |
+| レビュー     | security-auditor        |
 
 ## 概要
 

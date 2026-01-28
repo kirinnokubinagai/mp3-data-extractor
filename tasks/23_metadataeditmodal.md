@@ -2,14 +2,14 @@
 
 ## メタ情報
 
-| 項目 | 値 |
-|------|-----|
-| 並列グループ | C |
-| 依存タスク | 11 |
-| 推定時間 | 1h |
-| 担当subagent | frontend-component |
-| テンプレート | organisms_task_template.md |
-| レビュー | design-reviewer, frontend-reviewer |
+| 項目         | 値                                 |
+| ------------ | ---------------------------------- |
+| 並列グループ | C                                  |
+| 依存タスク   | 11                                 |
+| 推定時間     | 1h                                 |
+| 担当subagent | frontend-component                 |
+| テンプレート | organisms_task_template.md         |
+| レビュー     | design-reviewer, frontend-reviewer |
 
 ## 概要
 

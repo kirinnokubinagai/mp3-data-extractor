@@ -1,0 +1,28 @@
+{
+  "name": "media-extractor",
+  "version": "2.0.0",
+  "description": "動画・音声ファイルを検出してダウンロード、音声抽出が可能なChrome拡張機能",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint *.js lib/*.js",
+    "lint:fix": "eslint *.js lib/*.js --fix",
+    "format": "prettier --write \"**/*.{js,json,md,css,html}\"",
+    "format:check": "prettier --check \"**/*.{js,json,md,css,html}\"",
+    "test": "echo \"テストは後のフェーズで実装\" && exit 0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.2.0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "media",
+    "video",
+    "audio",
+    "mp3",
+    "ffmpeg"
+  ],
+  "author": "",
+  "license": "MIT"
+}
