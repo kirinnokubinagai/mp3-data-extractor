@@ -31,3 +31,8 @@ npm-debug.log*
 # Testing
 coverage/
 .nyc_output/
+
+# Build artifacts
+build/
+dist/
+test-extension/

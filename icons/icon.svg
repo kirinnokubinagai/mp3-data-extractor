@@ -1,0 +1,19 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景（角丸正方形） -->
+  <rect width="128" height="128" rx="20" fill="#14b8a6"/>
+
+  <!-- 音声波形（5本の縦線で波形を表現） -->
+  <rect x="24" y="50" width="8" height="28" rx="4" fill="#ffffff"/>
+  <rect x="38" y="42" width="8" height="44" rx="4" fill="#ffffff"/>
+  <rect x="52" y="32" width="8" height="64" rx="4" fill="#ffffff"/>
+  <rect x="66" y="42" width="8" height="44" rx="4" fill="#ffffff"/>
+  <rect x="80" y="50" width="8" height="28" rx="4" fill="#ffffff"/>
+
+  <!-- ダウンロード矢印（右下） -->
+  <g transform="translate(90, 88)">
+    <!-- 矢印の軸 -->
+    <rect x="7" y="0" width="4" height="16" rx="2" fill="#ffffff"/>
+    <!-- 矢印の先端（下向き三角形） -->
+    <path d="M 2 14 L 9 22 L 16 14 Z" fill="#ffffff"/>
+  </g>
+</svg>

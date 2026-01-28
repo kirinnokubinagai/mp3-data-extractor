@@ -4,9 +4,11 @@
   "version": "2.0.0",
   "description": "動画・音声ファイルを検出してダウンロード、音声抽出が可能なChrome拡張機能",
 
-  "permissions": ["activeTab", "storage", "notifications", "downloads"],
+  "permissions": ["activeTab", "scripting", "storage", "notifications", "downloads", "offscreen"],
 
-  "host_permissions": ["<all_urls>"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
 
   "action": {
     "default_popup": "popup.html",
@@ -19,14 +21,14 @@
   },
 
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "dist/background.js",
     "type": "module"
   },
 
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["dist/content.js"],
       "run_at": "document_idle"
     }
   ],

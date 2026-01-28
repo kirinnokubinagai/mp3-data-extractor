@@ -19,7 +19,9 @@ export default [
         Promise: 'readonly',
         URL: 'readonly',
         Blob: 'readonly',
-        File: 'readonly'
+        File: 'readonly',
+        lucide: 'readonly',
+        alert: 'readonly'
       }
     },
     rules: {
@@ -40,6 +42,15 @@ export default [
     }
   },
   {
-    ignores: ['node_modules/**', 'dist/**', 'icons/**']
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      'icons/**',
+      'lib/lucide.min.js',
+      'tailwind.config.js',
+      'build.js',
+      'coverage/**',
+      'src/**'
+    ]
   }
 ];

@@ -1,9 +1,0 @@
-<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
-  <!-- 背景 -->
-  <rect width="128" height="128" rx="16" fill="#14b8a6"/>
-
-  <!-- 音声波形（3本の縦線） -->
-  <rect x="40" y="40" width="8" height="48" rx="4" fill="#ffffff"/>
-  <rect x="60" y="28" width="8" height="72" rx="4" fill="#ffffff"/>
-  <rect x="80" y="40" width="8" height="48" rx="4" fill="#ffffff"/>
-</svg>
