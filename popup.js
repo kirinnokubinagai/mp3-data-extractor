@@ -5,7 +5,6 @@
 
 import {
   createHeader,
-  createBulkActions,
   createMediaItem,
   createEmptyState,
   createNoticeBox,
@@ -15,7 +14,6 @@ import {
 /** アプリケーション状態 */
 const state = {
   mediaItems: [],
-  selectedIds: new Set(),
   isScanning: false
 };
 
@@ -115,6 +113,21 @@ function handleServiceWorkerMessage(message) {
     case 'JOB_ERROR':
       handleJobError(message.payload);
       break;
+    case 'YOUTUBE_PROGRESS':
+      handleYouTubeProgress(message.payload);
+      break;
+    case 'YOUTUBE_METADATA':
+      handleYouTubeMetadata(message.payload);
+      break;
+    case 'YOUTUBE_STATUS':
+      handleYouTubeStatus(message.payload);
+      break;
+    case 'YOUTUBE_COMPLETE':
+      handleYouTubeComplete(message.payload);
+      break;
+    case 'YOUTUBE_ERROR':
+      handleYouTubeError(message.payload);
+      break;
   }
 }
 
@@ -165,6 +178,80 @@ function handleJobError(payload) {
 }
 
 /**
+ * yt-dlp進捗更新
+ */
+function handleYouTubeProgress(payload) {
+  const { jobId, progress, message } = payload;
+  const item = state.mediaItems.find(i => i.id === jobId);
+
+  if (item) {
+    item.progress = progress;
+    item.statusText = message;
+    renderUI();
+  }
+}
+
+/**
+ * yt-dlpメタデータ受信
+ */
+function handleYouTubeMetadata(payload) {
+  const { jobId, metadata } = payload;
+  const item = state.mediaItems.find(i => i.id === jobId);
+
+  if (item) {
+    item.metadata = metadata;
+    renderUI();
+  }
+}
+
+/**
+ * yt-dlpステータス更新
+ */
+function handleYouTubeStatus(payload) {
+  const { jobId, message } = payload;
+  const item = state.mediaItems.find(i => i.id === jobId);
+
+  if (item) {
+    item.statusText = message;
+    renderUI();
+  }
+}
+
+/**
+ * yt-dlp完了
+ */
+function handleYouTubeComplete(payload) {
+  const { jobId, metadata } = payload;
+  const item = state.mediaItems.find(i => i.id === jobId);
+
+  if (item) {
+    item.status = 'completed';
+    item.progress = 100;
+    item.statusText = 'ダウンロード完了';
+    if (metadata) {
+      item.metadata = metadata;
+    }
+    renderUI();
+    saveState();
+  }
+}
+
+/**
+ * yt-dlpエラー
+ */
+function handleYouTubeError(payload) {
+  const { jobId, error } = payload;
+  const item = state.mediaItems.find(i => i.id === jobId);
+
+  if (item) {
+    item.status = 'error';
+    item.errorMessage = error;
+    renderUI();
+    saveState();
+  }
+}
+
+/**
  * UIをレンダリング
  */
 function renderUI() {
@@ -195,15 +282,6 @@ function renderUI() {
       appEl.appendChild(emptyState);
     }
   } else {
-    // 一括操作バー
-    const bulkActions = createBulkActions({
-      selectAllChecked: state.selectedIds.size === state.mediaItems.length,
-      onSelectAll: handleSelectAll,
-      onBulkDownload: handleBulkDownload,
-      onBulkExtract: handleBulkExtract
-    });
-    appEl.appendChild(bulkActions);
-
     // メディアアイテムリスト
     const listContainer = document.createElement('div');
     listContainer.className = 'p-4 space-y-4';
@@ -219,8 +297,7 @@ function renderUI() {
         statusText: item.statusText,
         remainingTime: item.remainingTime,
         errorMessage: item.errorMessage,
-        checked: state.selectedIds.has(item.id),
-        onCheckChange: () => handleCheckChange(item.id),
+        metadata: item.metadata,
         onEdit: () => handleEdit(item.id),
         onDownload: () => handleDownload(item.id),
         onExtract: () => handleExtract(item.id),
@@ -256,6 +333,7 @@ async function scanPage() {
 
     // Content Scriptを実行してメディアを検出
     const results = await executeCollect(tab.id);
+    console.log('[scanPage] 検出結果を受信:', results.length, '件');
 
     // 既存の検出済みアイテムをクリア（変換中・完了は保持）
     state.mediaItems = state.mediaItems.filter(
@@ -264,18 +342,21 @@ async function scanPage() {
 
     // 新しい検出結果を追加
     results.forEach((item, index) => {
+      console.log('[scanPage] アイテム追加:', item);
       state.mediaItems.push({
         id: `media-${Date.now()}-${index}`,
         type: detectMediaType(item.url, item.source),
         filename: item.label || extractFilename(item.url),
         url: item.url,
-        status: 'detected'
+        status: 'detected',
+        isYoutube: item.isYoutube || false
       });
     });
 
-    state.selectedIds.clear();
+    console.log('[scanPage] state.mediaItems:', state.mediaItems.length, '件');
+
   } catch (error) {
-    console.error('Failed to scan page:', error);
+    console.error('[scanPage] エラー:', error);
   } finally {
     state.isScanning = false;
     renderUI();
@@ -298,6 +379,8 @@ function queryActiveTab() {
  */
 function executeCollect(tabId) {
   return new Promise((resolve, reject) => {
+    console.log('[executeCollect] タブID:', tabId);
+
     chrome.scripting.executeScript(
       {
         target: { tabId },
@@ -305,10 +388,14 @@ function executeCollect(tabId) {
       },
       (results) => {
         if (chrome.runtime.lastError) {
+          console.error('[executeCollect] エラー:', chrome.runtime.lastError.message);
           reject(new Error(chrome.runtime.lastError.message));
           return;
         }
-        resolve(results && results[0] ? results[0].result : []);
+
+        const collectedItems = results && results[0] ? results[0].result : [];
+        console.log('[executeCollect] 受信結果:', collectedItems.length, '件', collectedItems);
+        resolve(collectedItems);
       }
     );
   });
@@ -321,7 +408,29 @@ function collectMedia() {
   const results = [];
   const seen = new Set();
 
-  const addItem = (url, label, sourceType) => {
+  // YouTube検出
+  const isYoutube = window.location.hostname.includes('youtube.com') ||
+                   window.location.hostname.includes('youtu.be');
+
+  if (isYoutube) {
+    console.log('[collectMedia] YouTube検出 - yt-dlpを使用します');
+
+    // YouTubeの動画URLを返す（yt-dlpで処理）
+    const videoId = new URLSearchParams(window.location.search).get('v');
+    if (videoId) {
+      const youtubeUrl = window.location.href;
+      results.push({
+        url: youtubeUrl,
+        label: document.title.replace(' - YouTube', ''),
+        source: 'youtube',
+        isYoutube: true
+      });
+      console.log('[collectMedia] YouTube URL:', youtubeUrl);
+      return results;
+    }
+  }
+
+  const addItem = (url, label, sourceType, isFromMediaElement = false) => {
     if (!url) {
       return;
     }
@@ -329,12 +438,19 @@ function collectMedia() {
     if (!absolute) {
       return;
     }
-    if (!looksLikeMedia(absolute, sourceType)) {
+    // blob: URLのチェック
+    if (absolute.startsWith('blob:')) {
+      console.log('[collectMedia] blob: URLをスキップ:', absolute);
+      return;
+    }
+    // video/audio要素から取得した場合は拡張子チェックをスキップ
+    if (!isFromMediaElement && !looksLikeMedia(absolute, sourceType)) {
       return;
     }
     if (seen.has(absolute)) {
       return;
     }
+    console.log('[collectMedia] メディア追加:', absolute);
     seen.add(absolute);
     results.push({
       url: absolute,
@@ -344,28 +460,35 @@ function collectMedia() {
   };
 
   // <video>タグ検出
-  document.querySelectorAll('video').forEach((video) => {
+  console.log('[collectMedia] video要素数:', document.querySelectorAll('video').length);
+  document.querySelectorAll('video').forEach((video, idx) => {
+    console.log(`[collectMedia] video[${idx}]:`, {
+      src: video.src,
+      currentSrc: video.currentSrc,
+      title: video.getAttribute('title')
+    });
+
     if (video.currentSrc) {
-      addItem(video.currentSrc, video.getAttribute('title'), 'video/mp4');
+      addItem(video.currentSrc, video.getAttribute('title'), 'video/mp4', true);
     } else if (video.src) {
-      addItem(video.src, video.getAttribute('title'), 'video/mp4');
+      addItem(video.src, video.getAttribute('title'), 'video/mp4', true);
     }
 
     video.querySelectorAll('source').forEach((source) => {
-      addItem(source.src, source.getAttribute('title'), source.type);
+      addItem(source.src, source.getAttribute('title'), source.type, true);
     });
   });
 
   // <audio>タグ検出
   document.querySelectorAll('audio').forEach((audio) => {
     if (audio.currentSrc) {
-      addItem(audio.currentSrc, audio.getAttribute('title'), audio.type);
+      addItem(audio.currentSrc, audio.getAttribute('title'), audio.type, true);
     } else if (audio.src) {
-      addItem(audio.src, audio.getAttribute('title'), audio.type);
+      addItem(audio.src, audio.getAttribute('title'), audio.type, true);
     }
 
     audio.querySelectorAll('source').forEach((source) => {
-      addItem(source.src, source.getAttribute('title'), source.type);
+      addItem(source.src, source.getAttribute('title'), source.type, true);
     });
   });
 
@@ -376,6 +499,7 @@ function collectMedia() {
     addItem(href, text || null, link.getAttribute('type'));
   });
 
+  console.log('[collectMedia] 検出結果:', results.length, '件', results);
   return results;
 
   function toAbsoluteUrl(url) {
@@ -486,62 +610,6 @@ function handleRescan() {
   scanPage();
 }
 
-function handleSelectAll(e) {
-  if (e.target.checked) {
-    state.mediaItems.forEach(item => state.selectedIds.add(item.id));
-  } else {
-    state.selectedIds.clear();
-  }
-  renderUI();
-}
-
-function handleCheckChange(id) {
-  if (state.selectedIds.has(id)) {
-    state.selectedIds.delete(id);
-  } else {
-    state.selectedIds.add(id);
-  }
-  renderUI();
-}
-
-async function handleBulkDownload() {
-  const selectedItems = state.mediaItems.filter(
-    item => state.selectedIds.has(item.id) && item.status === 'detected'
-  );
-
-  if (selectedItems.length === 0) {
-    return;
-  }
-
-  for (const item of selectedItems) {
-    try {
-      await chrome.runtime.sendMessage({
-        type: 'DOWNLOAD_VIDEO',
-        payload: {
-          url: item.url,
-          filename: item.filename
-        }
-      });
-    } catch (error) {
-      console.error('一括ダウンロードエラー:', error);
-    }
-  }
-}
-
-async function handleBulkExtract() {
-  const selectedItems = state.mediaItems.filter(
-    item => state.selectedIds.has(item.id) && item.status === 'detected'
-  );
-
-  if (selectedItems.length === 0) {
-    return;
-  }
-
-  for (const item of selectedItems) {
-    await startExtraction(item);
-  }
-}
-
 function handleEdit(id) {
   const item = state.mediaItems.find(i => i.id === id);
   if (!item) {
@@ -572,13 +640,40 @@ async function handleDownload(id) {
   }
 
   try {
-    await chrome.runtime.sendMessage({
-      type: 'DOWNLOAD_VIDEO',
-      payload: {
-        url: item.url,
-        filename: item.filename
+    // YouTubeの場合はytdl-coreを使用
+    if (item.isYoutube) {
+      item.status = 'converting';
+      item.statusText = 'YouTubeダウンロード中...';
+      item.progress = 0;
+      renderUI();
+
+      const response = await chrome.runtime.sendMessage({
+        type: 'YOUTUBE_DOWNLOAD',
+        payload: {
+          url: item.url,
+          jobId: id
+        }
+      });
+
+      if (response.success) {
+        item.status = 'completed';
+        item.statusText = 'ダウンロード完了';
+        item.progress = 100;
+      } else {
+        throw new Error(response.error);
       }
-    });
+    } else {
+      // 通常のダウンロード
+      await chrome.runtime.sendMessage({
+        type: 'DOWNLOAD_VIDEO',
+        payload: {
+          url: item.url,
+          filename: item.filename
+        }
+      });
+    }
+
+    renderUI();
   } catch (error) {
     console.error('ダウンロードエラー:', error);
     item.status = 'error';
@@ -593,7 +688,41 @@ async function handleExtract(id) {
     return;
   }
 
-  await startExtraction(item);
+  // YouTubeの場合はytdl-coreで音声抽出
+  if (item.isYoutube) {
+    try {
+      item.status = 'converting';
+      item.statusText = 'YouTube音声抽出中...';
+      item.progress = 0;
+      renderUI();
+
+      const response = await chrome.runtime.sendMessage({
+        type: 'YOUTUBE_EXTRACT',
+        payload: {
+          url: item.url,
+          jobId: id
+        }
+      });
+
+      if (response.success) {
+        item.status = 'completed';
+        item.statusText = '音声抽出完了';
+        item.progress = 100;
+      } else {
+        throw new Error(response.error);
+      }
+
+      renderUI();
+    } catch (error) {
+      console.error('音声抽出エラー:', error);
+      item.status = 'error';
+      item.errorMessage = error.message;
+      renderUI();
+    }
+  } else {
+    // 通常のffmpeg抽出
+    await startExtraction(item);
+  }
 }
 
 async function startExtraction(item) {
@@ -671,7 +800,6 @@ async function handleDelete(id) {
   }
 
   state.mediaItems.splice(index, 1);
-  state.selectedIds.delete(id);
   renderUI();
   await saveState();
 }

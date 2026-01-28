@@ -9,7 +9,8 @@ const buildOptions = {
   sourcemap: false,
   target: 'es2020',
   format: 'esm',
-  logLevel: 'info'
+  logLevel: 'info',
+  platform: 'browser'
 };
 
 async function build() {
@@ -22,7 +23,6 @@ async function build() {
       ...buildOptions,
       entryPoints: ['background.js'],
       outfile: 'dist/background.js',
-      platform: 'browser'
     });
 
     // Popup Script
@@ -31,7 +31,6 @@ async function build() {
       ...buildOptions,
       entryPoints: ['popup.js'],
       outfile: 'dist/popup.js',
-      platform: 'browser'
     });
 
     // Content Script
@@ -40,7 +39,6 @@ async function build() {
       ...buildOptions,
       entryPoints: ['content.js'],
       outfile: 'dist/content.js',
-      platform: 'browser'
     });
 
     // Offscreen Document
@@ -49,7 +47,6 @@ async function build() {
       ...buildOptions,
       entryPoints: ['offscreen.js'],
       outfile: 'dist/offscreen.js',
-      platform: 'browser'
     });
 
     console.log('\n✅ Build completed successfully!');

@@ -1,7 +1,11 @@
 /**
  * Service Worker (Manifest V3)
  * Offscreen Documentを管理し、音声抽出を委譲する
+ * YouTube対応: Render APIサーバー経由
  */
+
+/** APIサーバーURL（デプロイ後に更新） */
+const API_SERVER_URL = 'http://localhost:8000'; // TODO: Renderデプロイ後に更新
 
 /** 実行中のジョブ */
 const activeJobs = new Map();
@@ -20,7 +24,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       settings: {
         outputFormat: 'mp3',
         bitrate: '192k',
-        notificationsEnabled: true
+        notificationsEnabled: true,
+        apiServerUrl: API_SERVER_URL
       }
     });
   }
@@ -28,61 +33,392 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
 // 起動時
 chrome.runtime.onStartup.addListener(() => {
-  console.log('[Service Worker] 起動完了');
-  updateBadge(0);
+  console.log('[Service Worker] 起動');
 });
 
-// メッセージ受信
+// メッセージハンドラー
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[Service Worker] メッセージ受信:', message.type);
 
-  switch (message.type) {
-    case 'EXTRACT_AUDIO':
-      handleExtractAudio(message.payload, sender.tab?.id)
-        .then(result => sendResponse({ success: true, data: result }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-      return true; // 非同期レスポンス
+  // 非同期処理を返す
+  (async () => {
+    try {
+      switch (message.type) {
+        case 'COLLECT_MEDIA':
+          return await handleCollectMedia(message.payload, sender.tab?.id);
 
-    case 'OFFSCREEN_PROGRESS':
-      handleOffscreenProgress(message.payload)
-        .then(() => sendResponse({ success: true }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-      return true;
+        case 'EXTRACT_AUDIO':
+          return await handleExtractAudio(message.payload, sender.tab?.id);
 
-    case 'DOWNLOAD_VIDEO':
-      handleDownloadVideo(message.payload)
-        .then(() => sendResponse({ success: true }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-      return true;
+        case 'YOUTUBE_DOWNLOAD':
+          return await handleYouTubeDownload(message.payload);
 
-    case 'CANCEL_JOB':
-      handleCancelJob(message.payload)
-        .then(() => sendResponse({ success: true }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-      return true;
+        case 'YOUTUBE_EXTRACT':
+          return await handleYouTubeExtract(message.payload);
 
-    case 'GET_JOBS':
-      getJobs()
-        .then(jobs => sendResponse({ success: true, data: jobs }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-      return true;
+        default:
+          console.warn('[Service Worker] 未知のメッセージタイプ:', message.type);
+          return { success: false, error: `Unknown message type: ${message.type}` };
+      }
+    } catch (error) {
+      console.error('[Service Worker] エラー:', error);
+      return { success: false, error: error.message };
+    }
+  })().then(sendResponse);
 
-    default:
-      console.warn('[Service Worker] 不明なメッセージタイプ:', message.type);
-      sendResponse({ success: false, error: '不明なメッセージタイプ' });
-  }
+  return true; // 非同期レスポンス
 });
 
 /**
- * Offscreen Documentを作成
+ * メディア収集
  */
-async function setupOffscreenDocument() {
+async function handleCollectMedia(payload, tabId) {
+  const { patterns } = payload;
+
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: collectMediaFromPage,
+      args: [patterns]
+    });
+
+    const mediaItems = results[0].result;
+    console.log('[Service Worker] メディア収集完了:', mediaItems.length, '件');
+
+    return {
+      success: true,
+      media: mediaItems
+    };
+  } catch (error) {
+    console.error('[Service Worker] メディア収集エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * ページ内メディア収集（Content Script内で実行）
+ */
+function collectMediaFromPage(patterns) {
+  const media = [];
+  const processedUrls = new Set();
+
+  // video要素
+  document.querySelectorAll('video').forEach(video => {
+    const src = video.src || video.currentSrc;
+    if (src && !processedUrls.has(src)) {
+      processedUrls.add(src);
+      media.push({
+        type: 'video',
+        url: src,
+        element: 'video'
+      });
+    }
+  });
+
+  // audio要素
+  document.querySelectorAll('audio').forEach(audio => {
+    const src = audio.src || audio.currentSrc;
+    if (src && !processedUrls.has(src)) {
+      processedUrls.add(src);
+      media.push({
+        type: 'audio',
+        url: src,
+        element: 'audio'
+      });
+    }
+  });
+
+  // a要素（パターンマッチ）
+  document.querySelectorAll('a[href]').forEach(link => {
+    const href = link.href;
+    if (!processedUrls.has(href)) {
+      for (const pattern of patterns) {
+        if (new RegExp(pattern).test(href)) {
+          processedUrls.add(href);
+          media.push({
+            type: 'link',
+            url: href,
+            element: 'a',
+            text: link.textContent.trim()
+          });
+          break;
+        }
+      }
+    }
+  });
+
+  return media;
+}
+
+/**
+ * YouTube動画ダウンロード（APIサーバー経由）
+ */
+async function handleYouTubeDownload(payload) {
+  const { url, jobId } = payload;
+
+  console.log('[YouTube Download] 開始:', url);
+
+  try {
+    // Popupに進捗通知
+    await broadcastToPopup({
+      type: 'YOUTUBE_STATUS',
+      payload: {
+        jobId,
+        status: 'fetching_info',
+        message: 'サーバーに接続中...'
+      }
+    });
+
+    // APIサーバーから情報取得
+    const settings = await chrome.storage.local.get('settings');
+    const apiUrl = settings.settings?.apiServerUrl || API_SERVER_URL;
+
+    const response = await fetch(`${apiUrl}/api/download-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url })
+    });
+
+    if (!response.ok) {
+      throw new Error(`APIサーバーエラー: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error('動画情報の取得に失敗しました');
+    }
+
+    const { title, url: downloadUrl, merged } = result.data;
+
+    // メタデータを送信
+    await broadcastToPopup({
+      type: 'YOUTUBE_METADATA',
+      payload: {
+        jobId,
+        metadata: {
+          title,
+          uploader: 'YouTube',
+        }
+      }
+    });
+
+    // ダウンロード開始
+    await broadcastToPopup({
+      type: 'YOUTUBE_STATUS',
+      payload: {
+        jobId,
+        status: 'downloading',
+        message: 'ダウンロード中...'
+      }
+    });
+
+    const filename = `${sanitizeFilename(title)}.mp4`;
+
+    const downloadId = await chrome.downloads.download({
+      url: downloadUrl,
+      filename: filename,
+      saveAs: false
+    });
+
+    console.log('[YouTube Download] ダウンロード開始:', downloadId);
+
+    // 完了通知
+    await showNotification({
+      title: 'ダウンロード開始',
+      message: `${title} のダウンロードを開始しました`,
+      icon: 'icons/icon-128.png'
+    });
+
+    await broadcastToPopup({
+      type: 'YOUTUBE_COMPLETE',
+      payload: {
+        jobId,
+        downloadId,
+        filename
+      }
+    });
+
+    return {
+      success: true,
+      downloadId,
+      filename
+    };
+
+  } catch (error) {
+    console.error('[YouTube Download] エラー:', error);
+
+    await showNotification({
+      title: 'ダウンロードエラー',
+      message: error.message,
+      icon: 'icons/icon-128.png'
+    });
+
+    await broadcastToPopup({
+      type: 'YOUTUBE_ERROR',
+      payload: {
+        jobId,
+        error: error.message
+      }
+    });
+
+    throw error;
+  }
+}
+
+/**
+ * YouTube音声抽出（APIサーバー + ffmpeg.wasm）
+ */
+async function handleYouTubeExtract(payload) {
+  const { url, jobId, bitrate = '192k' } = payload;
+
+  console.log('[YouTube Extract] 開始:', url);
+
+  try {
+    // YouTube情報取得
+    await broadcastToPopup({
+      type: 'YOUTUBE_STATUS',
+      payload: {
+        jobId,
+        status: 'fetching_info',
+        message: 'サーバーに接続中...'
+      }
+    });
+
+    // APIサーバーから音声URL取得
+    const settings = await chrome.storage.local.get('settings');
+    const apiUrl = settings.settings?.apiServerUrl || API_SERVER_URL;
+
+    const response = await fetch(`${apiUrl}/api/audio-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url })
+    });
+
+    if (!response.ok) {
+      throw new Error(`APIサーバーエラー: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error('音声情報の取得に失敗しました');
+    }
+
+    const { title, url: audioUrl } = result.data;
+
+    const metadata = {
+      title,
+      uploader: 'YouTube',
+    };
+
+    await broadcastToPopup({
+      type: 'YOUTUBE_METADATA',
+      payload: {
+        jobId,
+        metadata
+      }
+    });
+
+    // 音声をダウンロード（Blob取得）
+    await broadcastToPopup({
+      type: 'YOUTUBE_STATUS',
+      payload: {
+        jobId,
+        status: 'downloading',
+        message: '音声をダウンロード中...'
+      }
+    });
+
+    const audioResponse = await fetch(audioUrl);
+    const blob = await audioResponse.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    // 通常の音声抽出処理に委譲
+    const filename = sanitizeFilename(title);
+
+    return await handleExtractAudio({
+      jobId,
+      url: blobUrl,
+      filename,
+      metadata,
+      bitrate
+    });
+
+  } catch (error) {
+    console.error('[YouTube Extract] エラー:', error);
+
+    await showNotification({
+      title: '音声抽出エラー',
+      message: error.message,
+      icon: 'icons/icon-128.png'
+    });
+
+    await broadcastToPopup({
+      type: 'YOUTUBE_ERROR',
+      payload: {
+        jobId,
+        error: error.message
+      }
+    });
+
+    throw error;
+  }
+}
+
+/**
+ * 音声抽出（Offscreen Document経由でffmpeg.wasm実行）
+ */
+async function handleExtractAudio(payload, tabId) {
+  const { jobId, url, filename, metadata, bitrate = '192k' } = payload;
+
+  console.log('[Extract Audio] 開始:', filename);
+
+  try {
+    // Offscreen Document確認・作成
+    await ensureOffscreenDocument();
+
+    // Offscreen Documentに処理を委譲
+    const result = await chrome.runtime.sendMessage({
+      type: 'EXTRACT_AUDIO',
+      payload: {
+        jobId,
+        url,
+        filename,
+        metadata,
+        bitrate
+      }
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || '音声抽出に失敗しました');
+    }
+
+    console.log('[Extract Audio] 完了:', result.filename);
+
+    return result;
+
+  } catch (error) {
+    console.error('[Extract Audio] エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * Offscreen Document確認・作成
+ */
+async function ensureOffscreenDocument() {
   if (offscreenDocumentCreated) {
     return;
   }
 
   const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT']
+    contextTypes: ['OFFSCREEN_DOCUMENT'],
+    documentUrls: [chrome.runtime.getURL('offscreen.html')]
   });
 
   if (existingContexts.length > 0) {
@@ -92,8 +428,8 @@ async function setupOffscreenDocument() {
 
   await chrome.offscreen.createDocument({
     url: 'offscreen.html',
-    reasons: ['BLOBS'],
-    justification: 'ffmpeg.wasmで音声抽出を行うため、Blob操作が必要'
+    reasons: ['AUDIO_PLAYBACK'],
+    justification: 'FFmpeg.wasmで音声変換を実行'
   });
 
   offscreenDocumentCreated = true;
@@ -101,271 +437,42 @@ async function setupOffscreenDocument() {
 }
 
 /**
- * 音声抽出処理（Offscreen Documentに委譲）
+ * Popup全体にブロードキャスト
  */
-async function handleExtractAudio(payload, _tabId) {
-  const { jobId, url, filename, metadata, bitrate = '192k' } = payload;
-
-  console.log('[Service Worker] 音声抽出開始:', jobId);
-
-  // ジョブを作成
-  const job = {
-    id: jobId,
-    url,
-    filename,
-    metadata,
-    status: 'converting',
-    progress: 0,
-    startTime: Date.now()
-  };
-
-  activeJobs.set(jobId, job);
-  await saveJobToStorage(job);
-
+async function broadcastToPopup(message) {
   try {
-    // Offscreen Documentを作成
-    await setupOffscreenDocument();
-
-    // Offscreen Documentに処理を委譲（ダウンロードまで完結）
-    console.log('[Service Worker] Offscreen Documentに処理を委譲');
-    const response = await chrome.runtime.sendMessage({
-      type: 'EXTRACT_AUDIO_OFFSCREEN',
-      payload: { jobId, url, filename, metadata, bitrate }
-    });
-
-    if (!response.success) {
-      throw new Error(response.error);
-    }
-
-    const { downloadId, filename: outputFilename } = response.data;
-
-    console.log('[Service Worker] ダウンロード開始:', downloadId);
-
-    // ジョブ完了
-    job.status = 'completed';
-    job.progress = 100;
-    job.downloadId = downloadId;
-    job.completedTime = Date.now();
-    job.duration = job.completedTime - job.startTime;
-    job.statusText = `変換完了 (${formatTime(Math.round(job.duration / 1000))})`;
-
-    activeJobs.delete(jobId);
-    await saveJobToStorage(job);
-
-    // 完了通知
-    updateBadge(activeJobs.size);
-
-    await showNotification({
-      title: '音声抽出完了',
-      message: `${outputFilename} のダウンロードが完了しました`,
-      icon: 'icons/icon-128.png'
-    });
-
-    // Popupに通知
-    try {
-      await chrome.runtime.sendMessage({
-        type: 'JOB_COMPLETED',
-        payload: { jobId, status: 'completed', statusText: job.statusText }
-      });
-    } catch {
-      // Popupが閉じている場合は無視
-    }
-
-    return { jobId, status: 'completed' };
+    await chrome.runtime.sendMessage(message);
   } catch (error) {
-    console.error('[Service Worker] 音声抽出エラー:', error);
-
-    // ジョブエラー
-    job.status = 'error';
-    job.errorMessage = error.message;
-    activeJobs.delete(jobId);
-    await saveJobToStorage(job);
-
-    // エラー通知
-    await showNotification({
-      title: '音声抽出エラー',
-      message: `${filename}: ${error.message}`,
-      icon: 'icons/icon-128.png'
-    });
-
-    // Popupに通知
-    try {
-      await chrome.runtime.sendMessage({
-        type: 'JOB_ERROR',
-        payload: { jobId, status: 'error', errorMessage: error.message }
-      });
-    } catch {
-      // Popupが閉じている場合は無視
+    // Popupが閉じている場合はエラーを無視
+    if (!error.message.includes('Could not establish connection')) {
+      console.error('[Service Worker] Broadcast エラー:', error);
     }
-
-    updateBadge(activeJobs.size);
-
-    throw error;
   }
 }
 
 /**
- * 動画ダウンロード処理
- */
-async function handleDownloadVideo(payload) {
-  const { url, filename } = payload;
-
-  const downloadId = await chrome.downloads.download({
-    url: url,
-    filename: filename || 'video.mp4',
-    saveAs: false
-  });
-
-  console.log('[Service Worker] ダウンロード開始:', downloadId);
-
-  await showNotification({
-    title: 'ダウンロード開始',
-    message: `${filename} のダウンロードを開始しました`,
-    icon: 'icons/icon-128.png'
-  });
-
-  return { downloadId };
-}
-
-/**
- * ジョブキャンセル処理
- */
-async function handleCancelJob(payload) {
-  const { jobId } = payload;
-
-  if (activeJobs.has(jobId)) {
-    const job = activeJobs.get(jobId);
-    job.status = 'cancelled';
-    activeJobs.delete(jobId);
-    await saveJobToStorage(job);
-
-    updateBadge(activeJobs.size);
-
-    console.log('[Service Worker] ジョブキャンセル:', jobId);
-  }
-}
-
-/**
- * ジョブ一覧取得
- */
-async function getJobs() {
-  const result = await chrome.storage.local.get('jobs');
-  return result.jobs || [];
-}
-
-/**
- * ジョブをストレージに保存
- */
-async function saveJobToStorage(job) {
-  const result = await chrome.storage.local.get('jobs');
-  const jobs = result.jobs || [];
-
-  const index = jobs.findIndex(j => j.id === job.id);
-  if (index >= 0) {
-    jobs[index] = job;
-  } else {
-    jobs.push(job);
-  }
-
-  await chrome.storage.local.set({ jobs });
-}
-
-/**
- * 通知を表示
+ * 通知表示
  */
 async function showNotification({ title, message, icon }) {
-  const settings = await getSettings();
-  if (!settings.notificationsEnabled) {
+  const settings = await chrome.storage.local.get('settings');
+  if (settings.settings?.notificationsEnabled === false) {
     return;
   }
 
   await chrome.notifications.create({
     type: 'basic',
     iconUrl: icon,
-    title,
-    message,
-    priority: 2
+    title: title,
+    message: message
   });
 }
 
 /**
- * 設定を取得
+ * ファイル名のサニタイズ
  */
-async function getSettings() {
-  const result = await chrome.storage.local.get('settings');
-  return result.settings || {
-    outputFormat: 'mp3',
-    bitrate: '192k',
-    notificationsEnabled: true
-  };
+function sanitizeFilename(filename) {
+  return filename
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\s+/g, '_')
+    .substring(0, 200);
 }
-
-/**
- * Badgeを更新
- */
-function updateBadge(count) {
-  if (count > 0) {
-    chrome.action.setBadgeText({ text: count.toString() });
-    chrome.action.setBadgeBackgroundColor({ color: '#14b8a6' }); // primary-500
-  } else {
-    chrome.action.setBadgeText({ text: '' });
-  }
-}
-
-/**
- * Offscreen Documentからのプログレス更新を処理
- */
-async function handleOffscreenProgress(payload) {
-  const { jobId, progress } = payload;
-  const job = activeJobs.get(jobId);
-
-  if (!job) {
-    return;
-  }
-
-  job.progress = progress;
-
-  // 残り時間を計算
-  const elapsed = Date.now() - job.startTime;
-  const estimatedTotal = (elapsed / progress) * 100;
-  const remaining = estimatedTotal - elapsed;
-  const remainingSeconds = Math.round(remaining / 1000);
-
-  job.remainingTime = formatTime(remainingSeconds);
-  job.statusText = `変換中... ${(progress / 100).toFixed(2)}x`;
-
-  // ストレージ更新
-  await saveJobToStorage(job);
-
-  // Popupに通知（開いていれば）
-  try {
-    await chrome.runtime.sendMessage({
-      type: 'JOB_PROGRESS',
-      payload: {
-        jobId,
-        progress,
-        statusText: job.statusText,
-        remainingTime: job.remainingTime
-      }
-    });
-  } catch {
-    // Popupが閉じている場合は無視
-  }
-
-  // Badge更新
-  updateBadge(activeJobs.size);
-}
-
-/**
- * 時間フォーマット
- */
-function formatTime(seconds) {
-  if (seconds < 60) {
-    return `${seconds}秒`;
-  }
-  const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${minutes}分${secs}秒`;
-}
-
-console.log('[Service Worker] 初期化完了');
