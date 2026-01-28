@@ -49,6 +49,14 @@ async function build() {
       outfile: 'dist/offscreen.js',
     });
 
+    // Auth Page
+    console.log('Building auth.js...');
+    await esbuild.build({
+      ...buildOptions,
+      entryPoints: ['auth.js'],
+      outfile: 'dist/auth.js',
+    });
+
     console.log('\n✅ Build completed successfully!');
   } catch (error) {
     console.error('❌ Build failed:', error);

@@ -2,3 +2,5 @@ fastapi==0.115.12
 uvicorn==0.34.0
 yt-dlp==2024.12.23
 pydantic==2.10.6
+supabase==2.13.2
+python-dotenv==1.0.1

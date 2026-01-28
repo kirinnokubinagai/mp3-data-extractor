@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン - Media Extractor</title>
+  <link rel="stylesheet" href="dist/popup.css">
+  <style>
+    body {
+      width: 400px;
+      min-height: 500px;
+      padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .auth-container {
+      max-width: 350px;
+      margin: 0 auto;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .logo h1 {
+      font-size: 24px;
+      margin: 10px 0 5px;
+      color: #14b8a6;
+    }
+    .logo p {
+      font-size: 14px;
+      color: #666;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #14b8a6;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #14b8a6;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #0d9488;
+    }
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #14b8a6;
+      border: 1px solid #14b8a6;
+      margin-top: 10px;
+    }
+    .btn-secondary:hover {
+      background: #f0fdfa;
+    }
+    .error {
+      background: #fee2e2;
+      color: #dc2626;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .success {
+      background: #dcfce7;
+      color: #16a34a;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .tab.active {
+      background: #14b8a6;
+      color: white;
+      border-color: #14b8a6;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="logo">
+      <h1>🎵 Media Extractor</h1>
+      <p>ログインしてご利用ください</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="login">ログイン</div>
+      <div class="tab" data-tab="signup">新規登録</div>
+    </div>
+
+    <div id="message"></div>
+
+    <!-- ログインフォーム -->
+    <div class="tab-content active" id="login-form">
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="login-email">メールアドレス</label>
+          <input type="email" id="login-email" required placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="login-password">パスワード</label>
+          <input type="password" id="login-password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary" id="login-btn">
+          ログイン
+        </button>
+      </form>
+    </div>
+
+    <!-- 新規登録フォーム -->
+    <div class="tab-content" id="signup-form">
+      <form id="signupForm">
+        <div class="form-group">
+          <label for="signup-email">メールアドレス</label>
+          <input type="email" id="signup-email" required placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="signup-password">パスワード</label>
+          <input type="password" id="signup-password" required placeholder="8文字以上" minlength="8">
+        </div>
+        <button type="submit" class="btn btn-primary" id="signup-btn">
+          新規登録
+        </button>
+        <p style="font-size: 12px; color: #666; margin-top: 10px; text-align: center;">
+          登録後、確認メールが送信されます
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <script src="dist/auth.js" type="module"></script>
+</body>
+</html>
